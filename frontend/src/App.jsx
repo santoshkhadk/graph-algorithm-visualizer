@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import axios from "axios";
+import "./App.css"; // We'll add styles here
 
 function App() {
   const [nodes, setNodes] = useState([]);
@@ -10,9 +11,13 @@ function App() {
   const [startNode, setStartNode] = useState(null);
   const [endNode, setEndNode] = useState(null);
 
+  const svgRef = useRef(null);
+  const dragNodeRef = useRef(null);
+
   // Add node
   const addNode = (e) => {
-    const rect = e.target.getBoundingClientRect();
+    if (e.target.tagName !== "svg") return;
+    const rect = svgRef.current.getBoundingClientRect();
     const newNode = {
       id: nodes.length,
       x: e.clientX - rect.left,
@@ -22,7 +27,7 @@ function App() {
     setNodes([...nodes, newNode]);
   };
 
-  // Connect nodes by clicking one then another
+  // Connect nodes
   const handleNodeClick = (id) => {
     if (selectedNode === null) {
       setSelectedNode(id);
@@ -34,23 +39,62 @@ function App() {
     }
   };
 
-  // Set start/end nodes
+  // Start/End node
   const handleSetStart = (id) => setStartNode(id);
   const handleSetEnd = (id) => setEndNode(id);
 
-  // Run shortest path algorithm
+  // Drag nodes
+  const handleMouseDown = (e, node) => {
+    e.stopPropagation();
+    dragNodeRef.current = node.id;
+  };
+
+  const handleMouseMove = (e) => {
+    if (dragNodeRef.current === null) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    setNodes((prev) =>
+      prev.map((n) =>
+        n.id === dragNodeRef.current
+          ? { ...n, x: e.clientX - rect.left, y: e.clientY - rect.top }
+          : n
+      )
+    );
+  };
+
+  const handleMouseUp = () => {
+    dragNodeRef.current = null;
+  };
+
+  // Delete node
+  const handleNodeDelete = (nodeId) => {
+    setNodes((prev) => prev.filter((n) => n.id !== nodeId));
+    setEdges((prev) => prev.filter((e) => e.from !== nodeId && e.to !== nodeId));
+    if (startNode === nodeId) setStartNode(null);
+    if (endNode === nodeId) setEndNode(null);
+  };
+
+  // Edit edge weight
+  const handleEdgeDoubleClick = (idx) => {
+    const newWeight = parseInt(prompt("Enter edge weight:", edges[idx].weight));
+    if (!isNaN(newWeight)) {
+      setEdges((prev) => prev.map((e, i) => (i === idx ? { ...e, weight: newWeight } : e)));
+    }
+  };
+
+  // Run algorithm
   const runAlgorithm = async () => {
     if (nodes.length === 0 || edges.length === 0) return;
 
     const idToIndex = {};
-    nodes.forEach((n, idx) => { idToIndex[n.id] = idx; });
+    nodes.forEach((n, idx) => (idToIndex[n.id] = idx));
 
     const graph = nodes.map(() => []);
-    edges.forEach(e => {
+    edges.forEach((e) => {
       const fromIdx = idToIndex[e.from];
       const toIdx = idToIndex[e.to];
-      graph[fromIdx].push([toIdx, e.weight ?? 1]);
-      graph[toIdx].push([fromIdx, e.weight ?? 1]); // undirected
+      const w = e.weight ?? 1;
+      graph[fromIdx].push([toIdx, w]);
+      graph[toIdx].push([fromIdx, w]);
     });
 
     const startIdx = idToIndex[startNode ?? nodes[0].id];
@@ -65,42 +109,61 @@ function App() {
       });
 
       const { steps, path } = res.data;
-      console.log("hello")
-     console.log(steps,path)
-      // Animate node visits
+
+      // Animate nodes
       for (let step of steps) {
         if (step.current !== undefined) {
           const nodeId = nodes[step.current].id;
-          setNodes(prev => prev.map(n => n.id === nodeId ? { ...n, color: "orange" } : n));
+          setNodes((prev) =>
+            prev.map((n) => (n.id === nodeId ? { ...n, color: "orange" } : n))
+          );
         }
-        await new Promise(r => setTimeout(r, speed));
+        await new Promise((r) => setTimeout(r, speed));
       }
 
-      // Highlight shortest path edges
-      setEdges(prev => prev.map(e => {
-        const fromIdx = idToIndex[e.from];
-        const toIdx = idToIndex[e.to];
-        let inPath = false;
-        for (let i = 0; i < path.length - 1; i++) {
-          if ((path[i] === fromIdx && path[i+1] === toIdx) || (path[i] === toIdx && path[i+1] === fromIdx)) {
-            inPath = true;
-            break;
+      // Highlight edges along path
+      setEdges((prev) =>
+        prev.map((e) => {
+          const fromIdx = idToIndex[e.from];
+          const toIdx = idToIndex[e.to];
+          let inPath = false;
+          for (let i = 0; i < path.length - 1; i++) {
+            if (
+              (path[i] === fromIdx && path[i + 1] === toIdx) ||
+              (path[i] === toIdx && path[i + 1] === fromIdx)
+            ) {
+              inPath = true;
+              break;
+            }
           }
-        }
-        return { ...e, color: inPath ? "red" : "black" };
-      }));
-
+          return { ...e, color: inPath ? "red" : "black" };
+        })
+      );
     } catch (err) {
       console.error("API error:", err);
     }
   };
 
   return (
-    <div>
+    <div className="container">
       <h1>Graph Algorithm Visualizer</h1>
-      <div style={{ marginBottom: "10px" }}>
+      
+      <div className="instructions">
+        <h2>Instructions:</h2>
+        <ul>
+          <li>Click on empty space to add a node.</li>
+          <li>Click on one node then another to create an edge.</li>
+          <li>Right-click a node to set Start (green) or End (purple).</li>
+          <li>Shift + Right-click a node to delete it.</li>
+          <li>Double-click an edge to edit its weight.</li>
+          <li>Drag nodes to reposition them.</li>
+          <li>Select algorithm and speed, then click "Run" to visualize shortest path.</li>
+        </ul>
+      </div>
+
+      <div className="controls">
         Algorithm:
-        <select value={algorithm} onChange={e => setAlgorithm(e.target.value)}>
+        <select value={algorithm} onChange={(e) => setAlgorithm(e.target.value)}>
           <option value="dijkstra">Dijkstra</option>
           <option value="astar">A*</option>
           <option value="bellman-ford">Bellman-Ford</option>
@@ -111,33 +174,40 @@ function App() {
           max="2000"
           step="100"
           value={speed}
-          onChange={e => setSpeed(Number(e.target.value))}
+          onChange={(e) => setSpeed(Number(e.target.value))}
         />
         Speed: {speed} ms
         <button onClick={runAlgorithm}>Run</button>
       </div>
 
       <svg
-        width={800}
-        height={600}
-        style={{ border: "1px solid black" }}
+        ref={svgRef}
+        width={1000}
+        height={700}
+        style={{ border: "1px solid black", marginTop: "10px" }}
         onClick={addNode}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
       >
-        {/* Draw edges */}
-        {edges.map((e, idx) => (
-          <line
-            key={idx}
-            x1={nodes[e.from]?.x}
-            y1={nodes[e.from]?.y}
-            x2={nodes[e.to]?.x}
-            y2={nodes[e.to]?.y}
-            stroke={e.color}
-            strokeWidth={4}
-          />
-        ))}
+        {edges.map((e, idx) => {
+          const from = nodes[e.from];
+          const to = nodes[e.to];
+          if (!from || !to) return null;
+          return (
+            <line
+              key={idx}
+              x1={from.x}
+              y1={from.y}
+              x2={to.x}
+              y2={to.y}
+              stroke={e.color}
+              strokeWidth={4}
+              onDoubleClick={() => handleEdgeDoubleClick(idx)}
+            />
+          );
+        })}
 
-        {/* Draw nodes */}
-        {nodes.map(n => (
+        {nodes.map((n) => (
           <circle
             key={n.id}
             cx={n.x}
@@ -146,19 +216,17 @@ function App() {
             fill={n.color}
             stroke={n.id === startNode ? "green" : n.id === endNode ? "purple" : "black"}
             strokeWidth={n.id === startNode || n.id === endNode ? 3 : 1}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleNodeClick(n.id);
-            }}
+            onClick={(e) => { e.stopPropagation(); handleNodeClick(n.id); }}
             onContextMenu={(e) => {
               e.preventDefault();
-              if (!startNode) handleSetStart(n.id);
+              if (e.shiftKey) handleNodeDelete(n.id);
+              else if (!startNode) handleSetStart(n.id);
               else if (!endNode) handleSetEnd(n.id);
             }}
+            onMouseDown={(e) => handleMouseDown(e, n)}
           />
         ))}
       </svg>
-      <p>Right-click nodes to set Start (green) / End (purple)</p>
     </div>
   );
 }
