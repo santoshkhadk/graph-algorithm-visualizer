@@ -1,74 +1,98 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+// import { useState, useEffect } from "react";
+// import axios from "axios";
 
-const sampleGraph = {
-  A: { B: 4, C: 2 },
-  B: { A: 4, C: 5, D: 10 },
-  C: { A: 2, B: 5, D: 3 },
-  D: { B: 10, C: 3 }
-};
+// function App() {
+//   const [nodes, setNodes] = useState([]);
+//   const [edges, setEdges] = useState([]);
+//   const [selectedNode, setSelectedNode] = useState(null);
+//   const [speed, setSpeed] = useState(500);
+//   const [algorithm, setAlgorithm] = useState("dijkstra");
 
-function GraphVisualizer() {
-  const [algorithm, setAlgorithm] = useState("dijkstra");
-  const [steps, setSteps] = useState([]);
-  const [path, setPath] = useState([]);
-  const [stepIndex, setStepIndex] = useState(0);
+//   // Add node
+//   const addNode = (e) => {
+//     const rect = e.target.getBoundingClientRect();
+//     setNodes([...nodes, {
+//       id: nodes.length,
+//       x: e.clientX - rect.left,
+//       y: e.clientY - rect.top,
+//       color: "lightblue"
+//     }]);
+//   };
 
-  const runAlgo = async () => {
-    const res = await axios.post("http://localhost:8000/api/run/", {
-      graph: sampleGraph,
-      start: "A",
-      end: "D",
-      algorithm: algorithm,
-      heuristic: { A: 7, B: 6, C: 2, D: 0 }
-    });
+//   // Connect nodes by clicking one then another
+//   const handleNodeClick = (id) => {
+//     if (selectedNode === null) {
+//       setSelectedNode(id);
+//     } else if (selectedNode !== id) {
+//       setEdges([...edges, { from: selectedNode, to: id, color: "black", weight: 1 }]);
+//       setSelectedNode(null);
+//     } else {
+//       setSelectedNode(null);
+//     }
+//   };
 
-    setSteps(res.data.steps);
-    setPath(res.data.path);
-    setStepIndex(0);
-  };
+//   // Animate shortest path
+//   const runAlgorithm = async () => {
+//     // build adjacency list
+//     const graph = nodes.map(() => []);
+//     edges.forEach(e => {
+//       graph[e.from].push([e.to, e.weight]);
+//       graph[e.to].push([e.from, e.weight]); // undirected
+//     });
 
-  useEffect(() => {
-    if (steps.length === 0) return;
+//     const start = 0;
+//     const end = nodes.length - 1;
 
-    const interval = setInterval(() => {
-      setStepIndex(prev => {
-        if (prev < steps.length - 1) return prev + 1;
-        clearInterval(interval);
-        return prev;
-      });
-    }, 1000);
+//     const res = await axios.post("http://127.0.0.1:8000/api/run/", {
+//       graph, start, end, algorithm
+//     });
 
-    return () => clearInterval(interval);
-  }, [steps]);
+//     const { steps, path } = res.data;
 
-  const currentStep = steps[stepIndex];
+//     // animate path
+//     for (let step of steps) {
+//       if (step.current !== undefined) {
+//         setNodes(prev => prev.map(n => n.id === step.current ? { ...n, color: "orange" } : n));
+//       }
+//       await new Promise(r => setTimeout(r, speed));
+//     }
 
-  return (
-    <div>
-      <h2>Shortest Path Visualizer</h2>
+//     // highlight shortest path
+//     setEdges(prev => prev.map(e => path.includes(e.from) && path.includes(e.to) ? { ...e, color: "red" } : e));
+//   };
 
-      <select value={algorithm} onChange={(e) => setAlgorithm(e.target.value)}>
-        <option value="dijkstra">Dijkstra</option>
-        <option value="astar">A*</option>
-        <option value="bellman-ford">Bellman-Ford</option>
-      </select>
+//   return (
+//     <div>
+//       <h1>Graph Algorithm Visualizer</h1>
+//       <div>
+//         Algorithm:
+//         <select value={algorithm} onChange={e => setAlgorithm(e.target.value)}>
+//           <option value="dijkstra">Dijkstra</option>
+//           <option value="astar">A*</option>
+//           <option value="bellman-ford">Bellman-Ford</option>
+//         </select>
+//         <input type="range" min="100" max="2000" step="100" value={speed}
+//           onChange={e => setSpeed(Number(e.target.value))} />
+//         Speed: {speed} ms
+//         <button onClick={runAlgorithm}>Run</button>
+//       </div>
 
-      <button onClick={runAlgo}>Run</button>
+//       <svg width={800} height={600} style={{ border: "1px solid black" }} onClick={addNode}>
+//         {edges.map((e, idx) => (
+//           <line key={idx}
+//             x1={nodes[e.from]?.x} y1={nodes[e.from]?.y}
+//             x2={nodes[e.to]?.x} y2={nodes[e.to]?.y}
+//             stroke={e.color} strokeWidth={4}
+//           />
+//         ))}
+//         {nodes.map(n => (
+//           <circle key={n.id} cx={n.x} cy={n.y} r={20} fill={n.color}
+//             onClick={(e) => { e.stopPropagation(); handleNodeClick(n.id); }}
+//           />
+//         ))}
+//       </svg>
+//     </div>
+//   );
+// }
 
-      <div style={{ marginTop: 20 }}>
-        <h3>Step: {stepIndex}</h3>
-        {currentStep && (
-          <pre>{JSON.stringify(currentStep, null, 2)}</pre>
-        )}
-      </div>
-
-      <div>
-        <h3>Final Path:</h3>
-        <p>{path.join(" → ")}</p>
-      </div>
-    </div>
-  );
-}
-
-export default GraphVisualizer;
+// export default App;
