@@ -155,7 +155,7 @@ function App() {
           <li>Click on one node then another to create an edge.</li>
           <li>Right-click a node to set Start (green) or End (purple).</li>
           <li>Shift + Right-click a node to delete it.</li>
-          <li>Double-click an edge to edit its weight.</li>
+          <li>click an edge to edit its weight.</li>
           <li>Drag nodes to reposition them.</li>
           <li>Select algorithm and speed, then click "Run" to visualize shortest path.</li>
         </ul>
@@ -194,16 +194,17 @@ function App() {
           const to = nodes[e.to];
           if (!from || !to) return null;
           return (
-            <line
-              key={idx}
-              x1={from.x}
-              y1={from.y}
-              x2={to.x}
-              y2={to.y}
-              stroke={e.color}
-              strokeWidth={4}
-              onDoubleClick={() => handleEdgeDoubleClick(idx)}
-            />
+           <line
+  key={idx}
+  x1={from.x}
+  y1={from.y}
+  x2={to.x}
+  y2={to.y}
+  stroke={e.color}
+  strokeWidth={4}
+  onClick={() => handleEdgeDoubleClick(idx)}
+  style={{ cursor: "pointer" }} // <-- pointer on hover
+/>
           );
         })}
 
