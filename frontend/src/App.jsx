@@ -143,12 +143,27 @@ function App() {
       console.error("API error:", err);
     }
   };
+const resetGraph = () => {
+  setNodes(prev =>
+    prev.map(n => ({
+      ...n,
+      color: "lightblue"
+    }))
+  );
+
+  setEdges(prev =>
+    prev.map(e => ({
+      ...e,
+      color: "black"
+    }))
+  );
+};
 
   return (
     <div className="container">
       <h1>Graph Algorithm Visualizer</h1>
       
-      <div className="instructions">
+    <div className="instructions ">
         <h2>Instructions:</h2>
         <ul>
           <li>Click on empty space to add a node.</li>
@@ -160,8 +175,7 @@ function App() {
           <li>Select algorithm and speed, then click "Run" to visualize shortest path.</li>
         </ul>
       </div>
-
-      <div className="controls">
+<div className="controls ">
         Algorithm:
         <select value={algorithm} onChange={(e) => setAlgorithm(e.target.value)}>
           <option value="dijkstra">Dijkstra</option>
@@ -177,37 +191,69 @@ function App() {
           onChange={(e) => setSpeed(Number(e.target.value))}
         />
         Speed: {speed} ms
-        <button onClick={runAlgorithm}>Run</button>
+       <button onClick={runAlgorithm}>Run</button>
+<button onClick={resetGraph}>Reset</button>
       </div>
 
       <svg
         ref={svgRef}
         width={1000}
-        height={700}
+        height={400}
         style={{ border: "1px solid black", marginTop: "10px" }}
         onClick={addNode}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
-        {edges.map((e, idx) => {
-          const from = nodes[e.from];
-          const to = nodes[e.to];
-          if (!from || !to) return null;
-          return (
-           <line
-  key={idx}
-  x1={from.x}
-  y1={from.y}
-  x2={to.x}
-  y2={to.y}
-  stroke={e.color}
-  strokeWidth={4}
-  onClick={() => handleEdgeDoubleClick(idx)}
-  style={{ cursor: "pointer" }} // <-- pointer on hover
-/>
-          );
-        })}
+      {edges.map((e, idx) => {
+  const from = nodes[e.from];
+  const to = nodes[e.to];
+  if (!from || !to) return null;
 
+  const midX = (from.x + to.x) / 2;
+  const midY = (from.y + to.y) / 2;
+
+  // Calculate small perpendicular offset
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+
+  const offset = 15; // distance from line
+  const offsetX = -dy / length * offset;
+  const offsetY = dx / length * offset;
+
+  return (
+    <g key={idx}>
+      {/* Edge */}
+      <line
+        x1={from.x}
+        y1={from.y}
+        x2={to.x}
+        y2={to.y}
+        stroke={e.color}
+        strokeWidth={4}
+        onClick={() => handleEdgeDoubleClick(idx)}
+        style={{ cursor: "pointer" }}
+      />
+
+      {/* Weight label */}
+      <text
+        x={midX + offsetX}
+        y={midY + offsetY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize="14"
+        fill="black"
+        style={{
+          pointerEvents: "none",
+          fontWeight: "bold",
+          background: "white"
+        }}
+      >
+        {e.weight}
+      </text>
+    </g>
+  );
+})}
         {nodes.map((n) => (
           <circle
             key={n.id}

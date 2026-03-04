@@ -58,3 +58,6 @@ body, html, #root {
   width: 100%;
   
 }
+text {
+  user-select: none;
+}
